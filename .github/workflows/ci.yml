@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [1.9.x]
+  pull_request:
+    branches: [1.9.x]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ matrix.cc }} ${{ matrix.opt }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+        opt: ["-O0", "-O1", "-O2", "-Os", "-O3"]
+    env:
+      CC: ${{ matrix.cc }}
+      OPT: ${{ matrix.opt }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build with warnings as errors
+        run: |
+          # _FORTIFY_SOURCE needs optimisation and enables the
+          # warn_unused_result checks
+          fortify=
+          [ "$OPT" = -O0 ] || fortify=-D_FORTIFY_SOURCE=2
+          $CC --version | head -n1
+          make CC="$CC" CFLAGS="-Wall -Wextra -Werror -g $OPT $fortify"
+
+  musl:
+    name: build (musl, Alpine)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build with warnings as errors
+        # musl is the C library of OpenWrt
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src alpine:3.21 sh -euc '
+            apk add --no-cache build-base linux-headers >/dev/null
+            gcc --version | head -n1
+            make CFLAGS="-Wall -Wextra -Werror -Os"
+          '
+
+  smoke:
+    name: smoke test (ASan + UBSan)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build with sanitizers
+        run: |
+          make CFLAGS="-g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
+               LDFLAGS="-fsanitize=address,undefined"
+      - name: Let ASan map its shadow memory
+        # high mmap randomisation on recent kernels breaks ASan
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: Probe and Get on lo
+        run: python3 tests/smoke.py ./wsdd2
+      - name: Restarts in a private network namespace
+        run: sudo unshare -n python3 tests/smoke.py --restart ./wsdd2
+
+  manpage:
+    name: man page
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install nroff and col
+        run: |
+          command -v nroff >/dev/null && command -v col >/dev/null && exit 0
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends groff-base bsdextrautils
+      - name: Every option is documented
+        run: sh tests/check-manpage.sh
+
+  commits:
+    name: every commit builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Build each commit of the pull request
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          rc=0
+          for c in $(git rev-list --reverse "$BASE..$HEAD"); do
+            git checkout -q "$c"
+            subject=$(git log -1 --format='%h %s' "$c")
+            if make -s clean all CFLAGS="-Wall -O2" >"$RUNNER_TEMP/build.log" 2>&1; then
+              echo "ok    $subject"
+            else
+              cat "$RUNNER_TEMP/build.log"
+              echo "::error::$subject does not build"
+              rc=1
+            fi
+          done
+          exit $rc
