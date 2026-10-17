@@ -384,7 +384,7 @@ static const char iw_event_cmd_str[][40] = {
     /* Power saving stuff (power management, unicast and multicast) */
     [SIOCSIWPOWER-SIOCIWFIRST]	= "SIOCSIWPOWER",		/* set Power Management settings */
     [SIOCGIWPOWER-SIOCIWFIRST]	= "SIOCGIWPOWER",		/* get Power Management settings */
-    /* WPA : Generic IEEE 802.11 informatiom element (e.g., for WPA/RSN/WMM).
+    /* WPA : Generic IEEE 802.11 information element (e.g., for WPA/RSN/WMM).
      * This ioctl uses struct iw_point and data buffer that includes IE id and len
      * fields. More than one IE may be included in the request. Setting the generic
      * IE to empty buffer (len=0) removes the generic IE from the driver. Drivers
@@ -1227,18 +1227,18 @@ int main(int argc, char *argv[])
     rc = connect(nls, (struct sockaddr *) &nlraddr, sizeof(nlraddr));
     if (rc != 0) goto fail;
 
-    size_t nlslen = sizeof(nlsaddr);
+    socklen_t nlslen = sizeof(nlsaddr);
     rc = getsockname(nls, (struct sockaddr *) &nlsaddr, &nlslen);
     if (rc < 0) goto fail;
 
-    outf("getsockname: len=%d family=%d pid=%d groups=%#x\n", nlslen,
+    outf("getsockname: len=%u family=%d pid=%d groups=%#x\n", (unsigned) nlslen,
         nlsaddr.nl_family, nlsaddr.nl_pid, nlsaddr.nl_groups);
 
-    size_t nlrlen = sizeof(nlraddr);
+    socklen_t nlrlen = sizeof(nlraddr);
     rc = getpeername(nls, (struct sockaddr *) &nlraddr, &nlrlen);
     if (rc < 0) goto fail;
 
-    outf("getpeername: len=%d family=%d pid=%d groups=%#x\n", nlrlen,
+    outf("getpeername: len=%u family=%d pid=%d groups=%#x\n", (unsigned) nlrlen,
         nlraddr.nl_family, nlraddr.nl_pid, nlraddr.nl_groups);
 
     //rc = fcntl(nls, F_GETFL, 0);

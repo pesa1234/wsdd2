@@ -6,7 +6,7 @@ local network become invisible to Windows 10 computers. That's due to the fact t
 required for Computer Browser service to function.
 
 Newer Windows systems can use WSD (Web Services for Devices) to discover shares hosted on
-other Windows computers while Linux systems normally utilize mNDS/DNS-SD for service discovery.
+other Windows computers while Linux systems normally utilize mDNS/DNS-SD for service discovery.
 Microsoft is moving to support mDNS/DNS-SD, but not yet there.
 
 The primary purpose of this project is to enable WSD on Samba servers so that network shares

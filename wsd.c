@@ -20,7 +20,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    This code is based on the wsdd implementation for Samba by
-   community contributers.
+   community contributors.
 
    The original copyright comment follows.
  */
@@ -169,7 +169,7 @@ static void set_seed(void)
 	time((time_t *)&seed);
 	
 	for(size_t i = 0; i < 4; ++i) {
-		unsigned long s = UUID[2*i+1] | UUID[2*i+0] << 16;
+		unsigned long s = UUID[2*i+1] | (unsigned long) UUID[2*i+0] << 16;
 		seed ^= s;
 	}
 
@@ -247,7 +247,11 @@ static struct {
 	{}
 };
 
-int set_getresp(const char *str, const char **next)
+/*
+ * Parse one "key:value" entry.  With fill_only set, an entry whose key
+ * already has a value is consumed but not stored.
+ */
+static int parse_getresp(const char *str, const char **next, bool fill_only)
 {
 	int i;
 	const char *p, *val;
@@ -306,6 +310,9 @@ int set_getresp(const char *str, const char **next)
 	if (!bootinfo[i].key)
 		return -1;
 
+	if (fill_only && bootinfo[i].value)
+		return 0;
+
 	value = strndup(val, vallen);
 	if (!value)
 		return -1;
@@ -319,6 +326,11 @@ exit:
 	if (next)
 		*next = p;
 	return -1;
+}
+
+int set_getresp(const char *str, const char **next)
+{
+	return parse_getresp(str, next, false);
 }
 
 const char *get_getresp(const char *key)
@@ -348,9 +360,10 @@ void init_getresp(void)
 			while (fgets(buf, sizeof(buf), fp)) {
 				buf[strcspn(buf, "\r\n")] = '\0';
 				const char *entry = buf;
+				/* the command line takes precedence over boot info */
 				while (*entry) {
 					const char *next = NULL;
-					if (set_getresp(entry, &next) != 0 || !next)
+					if (parse_getresp(entry, &next, true) != 0 || !next)
 						break;
 					entry = next;
 				}
@@ -475,7 +488,7 @@ static struct wsd_req_info *wsd_req_parse(const char *xml)
 	if (!msgid)
 		return NULL;
 
-	struct wsd_req_info *info = (struct wsd_req_info *) calloc(sizeof *info, 1);
+	struct wsd_req_info *info = (struct wsd_req_info *) calloc(1, sizeof *info);
 	if (!info)
 		return NULL;
 
@@ -559,7 +572,7 @@ static int wsd_send_msg(int fd, struct endpoint *ep, const _saddr_t *sa,
 
 	char ip[_ADDRSTRLEN];
 	inet_ntop(sa->ss.ss_family, _SIN_ADDR(sa), ip, sizeof ip);
-	DEBUG(3, W, "WSD-TO %s port %u (fd=%d,len=%ld,sent=%d) '%s'\n", ip, _SIN_PORT(sa), fd,
+	DEBUG(3, W, "WSD-TO %s port %u (fd=%d,len=%zu,sent=%d) '%s'\n", ip, _SIN_PORT(sa), fd,
 		msglen, ret, msg);
 
 	return ret != (int) msglen;
@@ -1026,7 +1039,8 @@ again:
 		if ((val = HEADER_IS(p, "Content-Type:"))) {
 			while (*val == ' ' || *val == '\t' || *val == '\r' || *val == '\n')
 				val++; // skip LWS
-			if (strcmp(val, "application/soap+xml") != 0) {
+			if (strncmp(val, "application/soap+xml", 20) != 0 ||
+					!(val[20] == '\0' || val[20] == ';' || val[20] == ' ' || val[20] == '\t' || val[20] == '\r' || val[20] == '\n')) {
 				ep->errstr = __FUNCTION__ ": Unsupported Content-Type";
 				return 400;
 			}
@@ -1255,7 +1269,7 @@ static int wsd_process_message(int fd, struct endpoint *ep, _saddr_t *sa,
 	{
 		char ip[_ADDRSTRLEN];
 		inet_ntop(sa->ss.ss_family, _SIN_ADDR(sa), ip, sizeof ip);
-		DEBUG(3, W, "WSD-FROM %s port %u (fd=%d,len=%ld): '%s'\n", ip, _SIN_PORT(sa), fd, len, buf);
+		DEBUG(3, W, "WSD-FROM %s port %u (fd=%d,len=%zd): '%s'\n", ip, _SIN_PORT(sa), fd, len, buf);
 	}
 
 	if (ep->type == SOCK_STREAM && strncmp(buf, "POST ", 5) == 0) {
@@ -1265,7 +1279,7 @@ static int wsd_process_message(int fd, struct endpoint *ep, _saddr_t *sa,
 		{
 			char ip[_ADDRSTRLEN];
 			inet_ntop(sa->ss.ss_family, _SIN_ADDR(sa), ip, sizeof ip);
-			DEBUG(3, W, "WSD-BODY %s port %u (fd=%d,status=%d,len=%ld): '%s'\n", ip, _SIN_PORT(sa),
+			DEBUG(3, W, "WSD-BODY %s port %u (fd=%d,status=%d,len=%zu): '%s'\n", ip, _SIN_PORT(sa),
 				fd, status, strlen(buf), buf);
 		}
 

@@ -20,7 +20,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    This code is based on the wsdd implementation for Samba by
-   community contributers.
+   community contributors.
 
    The original copyright comment follows.
  */
@@ -124,7 +124,7 @@ static int llmnr_send_response(struct endpoint *ep, _saddr_t *sa,
 	}
 
 	/*
-	 * 3rd octect of LLMNR header
+	 * 3rd octet of LLMNR header
 	 * check for standard query:
 	 * - Q/R (1-bit)     = 0
 	 * - OPCODE (4-bits) = 0
