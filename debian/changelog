@@ -1,3 +1,12 @@
+wsdd2 (1.9.2) stable; urgency=medium
+
+  * Read a non-default smb.conf with -c and start without testparm.
+  * Add the -A and -B options and let command-line options take precedence.
+  * Accept Content-Type parameters such as charset in WSD requests.
+  * Fix compiler warnings, a UBSan shift error and the GCC 14 musl build.
+
+ -- Andrea Pesaresi <andreapesaresi82@gmail.com>  Sat, 17 Oct 2026 10:40:57 +0200
+
 wsdd2 (1.9.1) stable; urgency=medium
 
   * Initialize WSD identity in TCP-only mode.

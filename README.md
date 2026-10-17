@@ -1,4 +1,4 @@
-# wsdd2 (1.9.1)
+# wsdd2 (1.9.2)
 WSD/LLMNR Discovery/Name Service Daemon
 
 With Microsoft turning off SMB1 feature completely on Windows 10, any Samba shares on the
@@ -117,3 +117,58 @@ Source: [oldium/wsdd2 pull request #1](https://github.com/oldium/wsdd2/pull/1)
   fixes in the Debian changelog.
 - Extends these release notes from version 1.9.0 to the complete 1.9.x branch
   and documents the fixes introduced by `06af692`.
+
+### `a2db581` - Merge pull request #1 from heitbaum/port2
+
+Source: [pesa1234/wsdd2 pull request #1](https://github.com/pesa1234/wsdd2/pull/1)
+by Rudi Heitbaum, which cherry-picks the commits of
+[oldium/wsdd2](https://github.com/oldium/wsdd2) that `master` lacks, keeping
+their authorship.
+
+From oldium/wsdd2:
+
+- `77a7597`, `7d69743`, `fe5366b`, `86ce598`, `a976485`: add `-c <file>` to
+  read a non-default `smb.conf`, start without `testparm` by deriving the host
+  and NetBIOS names from the system host name, accept the empty reply of
+  `testparm` for a parameter that is not set, log successful queries, and
+  show in `wsdd2 -h` which `smb.conf` is read, or that `testparm` was not
+  found.
+- `4c078f5`: parses the command line first and fills only the values that are
+  still missing, so command-line options take precedence over `smb.conf`.
+- `cdaf730`: adds the `-A` and `-B` options for the DNS host aliases and the
+  NetBIOS aliases.
+- `678e3ce`: accepts a WSD request `Content-Type` followed by parameters, such
+  as `application/soap+xml; charset=utf-8`, which was rejected with HTTP 400.
+- `ef83cfe`, `cf1ffeb`: fix `size_t`/`ssize_t` format and `socklen_t` pointer
+  warnings.
+
+From Rudi Heitbaum:
+
+- `f3a5578`: boot metadata from `/proc/sys/dev/boot/info` only fills the keys
+  that are still unset, so `-b` keeps precedence now that the command line is
+  parsed first.
+- `d853643`, `aa11300`, `a496ddf`, `cdb3e2c`: fix the `calloc()` argument
+  order, keep the interface name NUL-terminated, check the `chdir()` result
+  when daemonising, and make the locals used after `longjmp()` volatile. The
+  code now builds with `-Wall -Wextra -Werror` at every optimisation level.
+- `6115c12`: widens the UUID word before the shift in `set_seed()`, removing
+  undefined behaviour reported by UBSan.
+- `a2ce2c6`, `d334422`: restore `-c`, `-H` and `-A` in the man page synopsis
+  and fix spelling.
+
+### `c7f2c51` - Use designated initializers for struct msghdr
+
+- Fixes the build with GCC 14 and later on 64-bit musl, where `struct msghdr`
+  has padding members and the positional initializer put a NULL pointer into
+  an `int` field.
+- Makes the OpenWrt `010-gcc14.patch` unnecessary.
+
+### `95494b7` - Add CI workflow and smoke tests
+
+- Builds with gcc and clang from `-O0` to `-O3` with `-Werror`, and with musl
+  on Alpine.
+- Runs `tests/smoke.py` under ASan and UBSan: WS-Discovery Probe and
+  WS-Transfer Get on the loopback interface, then the same checks after
+  netlink-triggered restarts and SIGHUP in a private network namespace.
+- Checks with `tests/check-manpage.sh` that every option is documented in
+  `wsdd2.8`, and on pull requests that every commit builds.

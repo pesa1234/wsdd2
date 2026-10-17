@@ -21,7 +21,7 @@
 #ifndef _WSDD_H_
 #define _WSDD_H_
 
-#define WSDD_VERSION "1.9.1"
+#define WSDD_VERSION "1.9.2"
 
 #include <stdbool.h> // bool
 #include <stdio.h> // FILE, fopen(), fprintf()
