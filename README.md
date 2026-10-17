@@ -161,7 +161,8 @@ From Rudi Heitbaum:
 - Fixes the build with GCC 14 and later on 64-bit musl, where `struct msghdr`
   has padding members and the positional initializer put a NULL pointer into
   an `int` field.
-- Makes the OpenWrt `010-gcc14.patch` unnecessary.
+- OpenWrt packages that move to 1.9.2 must drop `patches/010-gcc14.patch`:
+  the fix is included, the patch no longer applies, and the build stops.
 
 ### `95494b7` - Add CI workflow and smoke tests
 
